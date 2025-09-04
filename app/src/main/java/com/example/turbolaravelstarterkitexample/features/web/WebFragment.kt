@@ -21,6 +21,7 @@ open class WebFragment : HotwireWebFragment() {
     companion object {
         private const val PREFS_NAME = "WebFragmentPrefs"
         private const val COOKIES_KEY = "saved_cookies"
+        private var hasRestoredSession = false
     }
     
     private lateinit var sharedPreferences: SharedPreferences
@@ -36,8 +37,11 @@ open class WebFragment : HotwireWebFragment() {
         // Configure cookie manager
         setupCookieManager()
         
-        // Restore session cookies BEFORE website renders (if we have a saved session)
-        restoreSessionIfExists()
+        // Restore session cookies only once per app session (not on every fragment creation)
+        if (!hasRestoredSession) {
+            restoreSessionIfExists()
+            hasRestoredSession = true
+        }
         
         setupMenu()
     }
@@ -188,6 +192,9 @@ open class WebFragment : HotwireWebFragment() {
         // Also clear cookies from CookieManager
         cookieManager.removeAllCookies(null)
         cookieManager.flush()
+        
+        // Reset the restoration flag so session can be restored again after next login
+        hasRestoredSession = false
     }
     
     /**

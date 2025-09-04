@@ -9,7 +9,7 @@
         "context": "default",
         "uri": "hotwire://fragment/web",
         "fallback_uri": "hotwire://fragment/web",
-        "pull_to_refresh_enabled": true
+        "pull_to_refresh_enabled": false
       }
     },
     {
@@ -18,8 +18,7 @@
         "^/settings$"
       ],
       "properties": {
-        "uri": "hotwire://fragment/web/home",
-        "presentation": "replace_root"
+        "uri": "hotwire://fragment/web/home"
       }
     },
     {
