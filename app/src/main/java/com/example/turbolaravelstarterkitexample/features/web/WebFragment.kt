@@ -53,11 +53,7 @@ open class WebFragment : HotwireWebFragment() {
 
     override fun onFormSubmissionFinished(location: String) {
         menuProgress?.isVisible = false
-        
-        // Reset form submission tracking after a delay to allow for redirects
-        view?.postDelayed({
-            isFormSubmissionInProgress = false
-        }, 2000) // 2 second delay to allow for redirect and page load
+        isFormSubmissionInProgress = false
     }
 
     override fun onVisitErrorReceived(location: String, error: VisitError) {
@@ -74,18 +70,18 @@ open class WebFragment : HotwireWebFragment() {
         super.onVisitCompleted(location, completedOffline)
         
         when {
-            // Login success: Successfully visiting dashboard from login means login worked
-            isLoginSuccess(location) -> {
-                // Add a delay to ensure cookies are fully set by the WebView
+            // Login success: Successfully visiting dashboard means login worked
+            location.contains("/dashboard") -> {
+                // Add a small delay to ensure cookies are fully set by the WebView
                 view?.postDelayed({
                     saveSessionCookies()
-                }, 500) // 500ms delay
+                }, 1000)
             }
             
-            // Logout detection: Visiting login page means we've been logged out
-            location.contains("/login") && !isFormSubmissionInProgress -> {
-                clearSavedSession()
-            }
+            // Temporarily disable automatic session clearing to debug login issues
+            // location.contains("/login") && !isFormSubmissionInProgress -> {
+            //     clearSavedSession()
+            // }
         }
     }
     
@@ -118,20 +114,25 @@ open class WebFragment : HotwireWebFragment() {
             // Try multiple domain formats to ensure we get the cookies
             val domains = listOf(baseUrl, "10.0.2.2:8000", "10.0.2.2")
             var cookies: String? = null
+            var usedDomain: String? = null
             
             for (domain in domains) {
                 cookies = cookieManager.getCookie(domain)
                 if (!cookies.isNullOrEmpty()) {
+                    usedDomain = domain
                     break
                 }
             }
             
-            if (!cookies.isNullOrEmpty()) {
+            if (!cookies.isNullOrEmpty() && usedDomain != null) {
                 sharedPreferences.edit()
                     .putString(COOKIES_KEY, cookies)
-                    .putString("${COOKIES_KEY}_domain", baseUrl)
+                    .putString("${COOKIES_KEY}_domain", usedDomain)
                     .putLong("${COOKIES_KEY}_timestamp", System.currentTimeMillis())
                     .apply()
+                    
+                // Ensure cookies are flushed to persistent storage
+                cookieManager.flush()
             }
         } catch (e: Exception) {
             // Handle silently
