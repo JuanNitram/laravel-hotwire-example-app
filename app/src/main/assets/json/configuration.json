@@ -1,0 +1,48 @@
+{
+  "settings": {},
+  "rules": [
+    {
+      "patterns": [
+        ".*"
+      ],
+      "properties": {
+        "context": "default",
+        "uri": "hotwire://fragment/web",
+        "fallback_uri": "hotwire://fragment/web",
+        "pull_to_refresh_enabled": true
+      }
+    },
+    {
+      "patterns": [
+        "^/dashboard$",
+        "^/settings$"
+      ],
+      "properties": {
+        "uri": "hotwire://fragment/web/home",
+        "presentation": "replace_root"
+      }
+    },
+    {
+      "patterns": [
+        "/login"
+      ],
+      "properties": {
+        "context": "modal",
+        "uri": "hotwire://fragment/web/modal",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": [
+        "/create$",
+        "/edit$",
+        "/delete$"
+      ],
+      "properties": {
+        "context": "modal",
+        "uri": "hotwire://fragment/web/modal/sheet",
+        "pull_to_refresh_enabled": false
+      }
+    }
+  ]
+}
