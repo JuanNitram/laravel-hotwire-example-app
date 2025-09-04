@@ -3,7 +3,6 @@ package com.example.turbolaravelstarterkitexample.features.web
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import android.webkit.CookieManager
@@ -22,7 +21,6 @@ open class WebFragment : HotwireWebFragment() {
     companion object {
         private const val PREFS_NAME = "WebFragmentPrefs"
         private const val COOKIES_KEY = "saved_cookies"
-        private const val TAG = "WebFragment"
     }
     
     private lateinit var sharedPreferences: SharedPreferences
@@ -47,25 +45,19 @@ open class WebFragment : HotwireWebFragment() {
     override fun onFormSubmissionStarted(location: String) {
         menuProgress?.isVisible = true
         isFormSubmissionInProgress = true
-        Log.d(TAG, "Form submission started for location: $location")
     }
 
     override fun onFormSubmissionFinished(location: String) {
         menuProgress?.isVisible = false
-        Log.d(TAG, "Form submission finished for location: $location")
         
         // Reset form submission tracking after a delay to allow for redirects
         view?.postDelayed({
             isFormSubmissionInProgress = false
-            Log.d(TAG, "Form submission process completed")
         }, 2000) // 2 second delay to allow for redirect and page load
     }
 
     override fun onVisitErrorReceived(location: String, error: VisitError) {
-        Log.e(TAG, "Visit error received for location: $location, error: $error")
-        
         if (error is HttpError.ClientError.Unauthorized) {
-            Log.d(TAG, "Unauthorized error - clearing session and redirecting to login")
             // Clear saved session when unauthorized (likely logged out)
             clearSavedSession()
             navigator.route(Urls.loginUrl, VisitOptions(action = REPLACE))
@@ -77,12 +69,9 @@ open class WebFragment : HotwireWebFragment() {
     override fun onVisitCompleted(location: String, completedOffline: Boolean) {
         super.onVisitCompleted(location, completedOffline)
         
-        Log.d(TAG, "Visit completed to location: $location (offline: $completedOffline)")
-        
         when {
             // Login success: Successfully visiting dashboard from login means login worked
             isLoginSuccess(location) -> {
-                Log.d(TAG, "🎉 Login success detected! Saving session cookies for location: $location")
                 // Add a delay to ensure cookies are fully set by the WebView
                 view?.postDelayed({
                     saveSessionCookies()
@@ -91,7 +80,6 @@ open class WebFragment : HotwireWebFragment() {
             
             // Logout detection: Visiting login page means we've been logged out
             location.contains("/login") && !isFormSubmissionInProgress -> {
-                Log.d(TAG, "Logout detected, clearing saved session")
                 clearSavedSession()
             }
         }
@@ -99,7 +87,6 @@ open class WebFragment : HotwireWebFragment() {
     
     override fun onVisitStarted(location: String) {
         super.onVisitStarted(location)
-        Log.d(TAG, "Visit started to location: $location")
     }
 
     private fun setupMenu() {
@@ -123,7 +110,6 @@ open class WebFragment : HotwireWebFragment() {
     private fun saveSessionCookies() {
         try {
             val baseUrl = extractDomainFromUrl(Urls.homeUrl)
-            Log.d(TAG, "💾 Saving session cookies for domain: $baseUrl")
             
             // Try multiple domain formats to ensure we get the cookies
             val domains = listOf(baseUrl, "10.0.2.2:8000", "10.0.2.2")
@@ -132,24 +118,19 @@ open class WebFragment : HotwireWebFragment() {
             for (domain in domains) {
                 cookies = cookieManager.getCookie(domain)
                 if (!cookies.isNullOrEmpty()) {
-                    Log.d(TAG, "Found session cookies for domain: $domain")
                     break
                 }
             }
             
             if (!cookies.isNullOrEmpty()) {
-                Log.d(TAG, "Session cookies: ${cookies.take(100)}...")
                 sharedPreferences.edit()
                     .putString(COOKIES_KEY, cookies)
                     .putString("${COOKIES_KEY}_domain", baseUrl)
                     .putLong("${COOKIES_KEY}_timestamp", System.currentTimeMillis())
                     .apply()
-                Log.d(TAG, "✅ Session cookies saved successfully!")
-            } else {
-                Log.d(TAG, "❌ No session cookies found for domains: $domains")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error saving session cookies", e)
+            // Handle silently
         }
     }
     
@@ -167,13 +148,9 @@ open class WebFragment : HotwireWebFragment() {
                 val daysSinceLogin = (System.currentTimeMillis() - savedTimestamp) / (1000 * 60 * 60 * 24)
                 
                 if (daysSinceLogin > 30) {
-                    Log.d(TAG, "🕐 Saved session is too old ($daysSinceLogin days), clearing it")
                     clearSavedSession()
                     return
                 }
-                
-                Log.d(TAG, "🔄 Restoring session cookies from $daysSinceLogin days ago...")
-                Log.d(TAG, "Session cookies: ${savedCookies.take(100)}...")
                 
                 // Use the saved domain or fallback to extracted domain
                 val baseUrl = savedDomain ?: extractDomainFromUrl(Urls.homeUrl)
@@ -192,12 +169,9 @@ open class WebFragment : HotwireWebFragment() {
                 
                 // Ensure cookies are written to persistent storage
                 cookieManager.flush()
-                Log.d(TAG, "✅ Session restored! Should stay logged in.")
-            } else {
-                Log.d(TAG, "📱 No saved session found - will show login page")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error restoring session", e)
+            // Handle silently
         }
     }
     
@@ -205,7 +179,6 @@ open class WebFragment : HotwireWebFragment() {
      * Clear saved session (useful for logout)
      */
     private fun clearSavedSession() {
-        Log.d(TAG, "🗑️ Clearing saved session")
         sharedPreferences.edit()
             .remove(COOKIES_KEY)
             .remove("${COOKIES_KEY}_domain")
@@ -215,7 +188,6 @@ open class WebFragment : HotwireWebFragment() {
         // Also clear cookies from CookieManager
         cookieManager.removeAllCookies(null)
         cookieManager.flush()
-        Log.d(TAG, "✅ Session cleared")
     }
     
     /**
@@ -238,7 +210,6 @@ open class WebFragment : HotwireWebFragment() {
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed to extract domain from $url", e)
             // Fallback for Android emulator
             "10.0.2.2:8000"
         }
