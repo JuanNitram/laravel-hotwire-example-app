@@ -12,6 +12,8 @@ class MainActivity : HotwireActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+        
+        // Apply window insets to handle system bars properly
         findViewById<View>(R.id.main).applyDefaultImeWindowInsets()
     }
 
