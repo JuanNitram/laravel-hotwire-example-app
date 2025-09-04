@@ -13,6 +13,8 @@ import dev.hotwire.navigation.destinations.HotwireDestinationDeepLink
 
 @HotwireDestinationDeepLink(uri = "hotwire://fragment/web/home")
 class WebHomeFragment : WebFragment() {
+    private lateinit var bottomNav: BottomNavigationView
+    
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_web_home, container, false)
     }
@@ -20,27 +22,39 @@ class WebHomeFragment : WebFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val bottomNav = view.findViewById<BottomNavigationView>(R.id.bottom_nav);
+        bottomNav = view.findViewById(R.id.bottom_nav)
 
         bottomNav.setOnItemSelectedListener { tab ->
             when (tab.itemId) {
                 R.id.bottom_nav_dashboard -> {
                     navigator.route(Urls.homeUrl)
-                    bottomNav.menu.findItem(R.id.bottom_nav_dashboard).setChecked(true)
                     true
                 }
-
-                else -> {
+                R.id.bottom_nav_settings -> {
                     navigator.route(Urls.settingsUrl)
-                    bottomNav.menu.findItem(R.id.bottom_nav_settings).setChecked(true)
                     true
                 }
+                else -> false
             }
         }
 
-        when (navigator.location) {
-            Urls.homeUrl -> bottomNav.menu.findItem(R.id.bottom_nav_dashboard).setChecked(true)
-            Urls.settingsUrl -> bottomNav.menu.findItem(R.id.bottom_nav_settings).setChecked(true)
+        updateBottomNavState()
+    }
+    
+    override fun onVisitCompleted(location: String, completedOffline: Boolean) {
+        super.onVisitCompleted(location, completedOffline)
+        
+        updateBottomNavState()
+    }
+    
+    private fun updateBottomNavState() {
+        when {
+            navigator.location?.contains("/dashboard") == true -> {
+                bottomNav.menu.findItem(R.id.bottom_nav_dashboard).isChecked = true
+            }
+            navigator.location?.contains("/settings") == true -> {
+                bottomNav.menu.findItem(R.id.bottom_nav_settings).isChecked = true
+            }
         }
     }
 
