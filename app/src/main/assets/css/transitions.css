@@ -1,0 +1,39 @@
+/* Custom transitions for bottom navigation */
+
+/* Default transition - slide from right */
+.turbo-frame {
+    transition: transform 0.3s ease-in-out;
+}
+
+/* When navigating to dashboard from settings - slide from right to left */
+body[data-navigation-direction="right-to-left"] .turbo-frame {
+    animation: slideFromRightToLeft 0.3s ease-in-out;
+}
+
+/* When navigating to settings from dashboard - slide from left to right */
+body[data-navigation-direction="left-to-right"] .turbo-frame {
+    animation: slideFromLeftToRight 0.3s ease-in-out;
+}
+
+@keyframes slideFromRightToLeft {
+    from {
+        transform: translateX(100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideFromLeftToRight {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+/* Override default Turbo transitions */
+.turbo-frame[data-turbo-action="replace"] {
+    transition: none;
+}
