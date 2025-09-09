@@ -1,0 +1,88 @@
+# Android Hotwire Native App - Cursor Rules
+
+## 🎯 Project Focus
+
+This is a **95% native Android app** with 5% web content. Focus on native functionality and mobile-first design.
+
+## 🚫 What NOT to do
+
+- ❌ NO desktop-specific code or layouts
+- ❌ NO unnecessary debug logs (keep only error logs)
+- ❌ NO complex web-based UI elements
+- ❌ NO unused imports or dependencies
+- ❌ NO hardcoded values or magic numbers
+
+## ✅ What TO do
+
+- ✅ **Native Android components** (BottomNavigationView, DrawerLayout, FAB, etc.)
+- ✅ **Clean, professional code** with minimal logging
+- ✅ **Mobile-first UI/UX** design
+- ✅ **Hotwire Native integration** for web content
+- ✅ **API-driven dynamic menus** and content
+- ✅ **Native camera integration**
+- ✅ **Session-based authentication**
+
+## 📱 Native-First Principles
+
+- Use native Android components whenever possible
+- Implement native navigation (bottom bar, drawer)
+- Native camera and file handling
+- Native authentication flows
+- Web content only for dynamic content display
+
+## 🔧 Code Standards
+
+- Clean, readable Kotlin code
+- Minimal logging (only errors and critical info)
+- Proper error handling
+- Follow Android best practices
+- Maintain Hotwire Native compatibility
+
+## 📋 Key Features to Implement
+
+- **Native Menu**: Dynamic sidebar populated via API
+- **Native Camera**: FAB with camera integration
+- **Native Navigation**: Bottom bar and drawer
+- **Native Forms**: Form submission via native UI
+- **Native Authentication**: API-based login/logout
+- **Deep Links**: Native app URL handling
+- **Session Management**: Persistent login across app restarts
+
+## 🎨 UI Guidelines
+
+- **Mobile-first design** with native components
+- **Clean, minimal interfaces** without desktop elements
+- **Smooth native transitions** and animations
+- **Consistent native styling** throughout the app
+- **Loading screens** to prevent UI flashes
+
+## 🧹 Cleanup Rules
+
+- Remove debug logs before commits
+- Clean up unused code and imports
+- Maintain consistent code style
+- Keep only essential functionality
+- Focus on native user experience
+
+## 🔄 Integration Points
+
+- **Backend API**: Use for dynamic content and authentication
+- **Hotwire Native**: For web content rendering
+- **Android System**: Camera, file system, notifications
+- **Session Management**: Persistent user sessions
+
+## 📊 Performance
+
+- Optimize for mobile performance
+- Minimize web content loading
+- Use native caching where possible
+- Smooth transitions and animations
+- Fast app startup and navigation
+
+## 🎯 Success Metrics
+
+- 95% native functionality
+- Smooth, native-like user experience
+- Fast, responsive interface
+- Reliable camera and file handling
+- Seamless web content integration

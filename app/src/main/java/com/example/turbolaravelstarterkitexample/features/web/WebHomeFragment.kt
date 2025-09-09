@@ -5,7 +5,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.MediaStore
 import androidx.activity.addCallback
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
@@ -13,9 +21,14 @@ import com.example.turbolaravelstarterkitexample.R
 import com.example.turbolaravelstarterkitexample.Urls
 import com.example.turbolaravelstarterkitexample.data.MenuItem
 import com.example.turbolaravelstarterkitexample.data.MenuService
+import com.example.turbolaravelstarterkitexample.data.ImageUploadService
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.navigation.NavigationView
 import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 import dev.hotwire.core.turbo.errors.VisitError
 import dev.hotwire.core.turbo.visit.VisitAction.REPLACE
 import dev.hotwire.core.turbo.visit.VisitOptions
@@ -26,10 +39,41 @@ class WebHomeFragment : WebFragment() {
     private lateinit var bottomNav: BottomNavigationView
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navigationView: NavigationView
+    private lateinit var fabCamera: FloatingActionButton
+    private lateinit var loadingScreen: View
+    private lateinit var mainContent: View
     private val menuService = MenuService()
+    private val imageUploadService = ImageUploadService()
     private var dynamicMenuItems: List<MenuItem> = emptyList()
     private var isClosingDrawer = false
     private var pendingNavigation: String? = null
+    
+    // Camera properties
+    private var currentPhotoPath: String? = null
+    private var currentPhotoUri: Uri? = null
+    
+    // Activity result launchers
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            openCamera()
+        } else {
+            android.util.Log.d("Camera", "Camera permission denied")
+        }
+    }
+    
+    private val takePictureLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success) {
+            currentPhotoUri?.let { uri ->
+                uploadImage(uri)
+            } ?: run {
+                android.util.Log.e("Camera", "currentPhotoUri is null!")
+            }
+        }
+    }
     
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         return inflater.inflate(R.layout.fragment_web_home, container, false)
@@ -41,6 +85,12 @@ class WebHomeFragment : WebFragment() {
         bottomNav = view.findViewById(R.id.bottom_nav)
         drawerLayout = view.findViewById(R.id.drawer_layout)
         navigationView = view.findViewById(R.id.nav_view)
+        fabCamera = view.findViewById(R.id.fab_camera)
+        loadingScreen = view.findViewById(R.id.loading_screen)
+        mainContent = view.findViewById(R.id.main_content)
+        
+        // Show loading screen initially
+        showLoadingScreen()
         
         // Override back button behavior for main sections
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner) {
@@ -79,16 +129,22 @@ class WebHomeFragment : WebFragment() {
 
         updateBottomNavState()
         
+        // Configure camera FAB
+        fabCamera.setOnClickListener {
+            checkCameraPermissionAndOpen()
+        }
+        
         // Load dynamic menu and configure drawer navigation
         loadDynamicMenu()
+        
+        // Update UI for initial page
+        updateUIForCurrentPage(navigator.location.orEmpty())
     }
     
     private fun loadDynamicMenu() {
         lifecycleScope.launch {
             try {
-                android.util.Log.d("DynamicMenu", "Loading dynamic menu...")
                 dynamicMenuItems = menuService.fetchMenuItems()
-                android.util.Log.d("DynamicMenu", "Loaded ${dynamicMenuItems.size} menu items")
                 
                 // Update the navigation view with dynamic menu
                 setupDrawerNavigation()
@@ -128,7 +184,6 @@ class WebHomeFragment : WebFragment() {
             }
             item.setIcon(iconRes)
             
-            android.util.Log.d("DynamicMenu", "Added menu item: ${menuItem.title} -> ${menuItem.url}")
         }
         
         // Add drawer listener for smooth transitions
@@ -138,15 +193,12 @@ class WebHomeFragment : WebFragment() {
             }
             
             override fun onDrawerOpened(drawerView: View) {
-                android.util.Log.d("DrawerDebug", "Drawer opened")
+                // Drawer opened
             }
             
             override fun onDrawerClosed(drawerView: View) {
-                android.util.Log.d("DrawerDebug", "Drawer closed")
-                
                 // Execute pending navigation when drawer is fully closed
                 pendingNavigation?.let { url ->
-                    android.util.Log.d("DynamicMenu", "Executing pending navigation to: $url")
                     navigator.route(url)
                     pendingNavigation = null
                     isClosingDrawer = false
@@ -154,7 +206,7 @@ class WebHomeFragment : WebFragment() {
             }
             
             override fun onDrawerStateChanged(newState: Int) {
-                android.util.Log.d("DrawerDebug", "Drawer state changed: $newState")
+                // Drawer state changed
             }
         })
         
@@ -166,18 +218,12 @@ class WebHomeFragment : WebFragment() {
             }
             
             selectedItem?.let { item ->
-                android.util.Log.d("DynamicMenu", "Selected: ${item.title} -> ${item.url}")
-                
                 // Extract path from URL for comparison
                 val urlPath = item.url.substringAfter(Urls.baseUrl)
                 val currentPath = navigator.location.orEmpty().substringAfter(Urls.baseUrl)
                 
-                android.util.Log.d("DynamicMenu", "URL path: $urlPath, Current path: $currentPath")
-                
                 // Navigate to the URL from the API
                 if (!currentPath.contains(urlPath)) {
-                    android.util.Log.d("DynamicMenu", "Navigating to different page: $urlPath")
-                    
                     // Set flag and store pending navigation
                     isClosingDrawer = true
                     pendingNavigation = item.url
@@ -185,7 +231,6 @@ class WebHomeFragment : WebFragment() {
                     // Close drawer - navigation will happen in onDrawerClosed callback
                     drawerLayout.closeDrawer(GravityCompat.START, true)
                 } else {
-                    android.util.Log.d("DynamicMenu", "Already on same page: $urlPath, just closing drawer")
                     // Close drawer immediately if already on same page
                     drawerLayout.closeDrawer(GravityCompat.START, true)
                 }
@@ -200,20 +245,15 @@ class WebHomeFragment : WebFragment() {
         val isGoingToDashboard = targetSection == "dashboard"
         val isComingFromSettings = currentLocation.contains("/settings")
         
-        android.util.Log.d("Navigation", "From: $currentLocation, To: $targetSection")
-        
         // Set navigation direction for CSS animations
         when {
             isGoingToDashboard && isComingFromSettings -> {
-                android.util.Log.d("Navigation", "Settings → Dashboard (right to left)")
                 setNavigationDirection("right-to-left")
             }
             !isGoingToDashboard && currentLocation.contains("/dashboard") -> {
-                android.util.Log.d("Navigation", "Dashboard → Settings (left to right)")
                 setNavigationDirection("left-to-right")
             }
             else -> {
-                android.util.Log.d("Navigation", "Default transition")
                 setNavigationDirection("default")
             }
         }
@@ -246,7 +286,6 @@ class WebHomeFragment : WebFragment() {
             
             // Execute JavaScript in WebView
             // Note: This would need to be implemented through the WebView
-            android.util.Log.d("Navigation", "Setting direction: $direction")
         } catch (e: Exception) {
             android.util.Log.e("Navigation", "Error setting navigation direction", e)
         }
@@ -259,7 +298,6 @@ class WebHomeFragment : WebFragment() {
     
     override fun onVisitStarted(location: String) {
         super.onVisitStarted(location)
-        android.util.Log.d("DynamicMenu", "Navigation started to: $location, isClosingDrawer: $isClosingDrawer")
     }
     
     override fun onVisitCompleted(location: String, completedOffline: Boolean) {
@@ -267,11 +305,11 @@ class WebHomeFragment : WebFragment() {
         
         // Only interfere with drawer if we're not in the middle of closing it
         if (!isClosingDrawer && drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            android.util.Log.d("DynamicMenu", "Drawer still open after navigation, closing: $location")
             drawerLayout.closeDrawer(GravityCompat.START, false) // Force close without animation
         }
         
         updateBottomNavState()
+        updateUIForCurrentPage(location)
     }
     
     private fun updateBottomNavState() {
@@ -313,5 +351,128 @@ class WebHomeFragment : WebFragment() {
     @SuppressLint("InflateParams")
     override fun createErrorView(error: VisitError): View {
         return layoutInflater.inflate(R.layout.error_web_home, null)
+    }
+    
+    // Camera functions
+    private fun checkCameraPermissionAndOpen() {
+        when {
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                openCamera()
+            }
+            else -> {
+                requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
+    
+    private fun openCamera() {
+        val photoFile = createImageFile()
+        photoFile?.let { file ->
+            currentPhotoPath = file.absolutePath
+            currentPhotoUri = FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.provider",
+                file
+            )
+            
+            android.util.Log.d("Camera", "Opening camera with URI: $currentPhotoUri")
+            takePictureLauncher.launch(currentPhotoUri)
+        }
+    }
+    
+    private fun createImageFile(): File? {
+        return try {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val imageFileName = "JPEG_${timeStamp}_"
+            val storageDir = requireContext().getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES)
+            
+            File.createTempFile(
+                imageFileName,
+                ".jpg",
+                storageDir
+            )
+        } catch (ex: Exception) {
+            android.util.Log.e("Camera", "Error creating image file", ex)
+            null
+        }
+    }
+    
+    private fun uploadImage(imageUri: Uri) {
+        // Get session cookies from the WebView
+        val sessionCookies = getSessionCookies()
+        
+        lifecycleScope.launch {
+            try {
+                val imageId = imageUploadService.uploadImage(requireContext(), imageUri, sessionCookies)
+                
+                if (imageId != null && imageId.isNotEmpty()) {
+                    val navigationUrl = "${Urls.baseUrl}/images/$imageId"
+                    // Navigate to image view with the returned ID
+                    navigator.route(navigationUrl)
+                } else {
+                    android.util.Log.e("Camera", "Image upload failed - imageId is null or empty: '$imageId'")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("Camera", "Exception in uploadImage", e)
+            }
+        }
+    }
+    
+    private fun getSessionCookies(): String {
+        return try {
+            val cookieManager = android.webkit.CookieManager.getInstance()
+            val cookies = cookieManager.getCookie(Urls.baseUrl)
+            cookies ?: ""
+        } catch (e: Exception) {
+            android.util.Log.e("Camera", "Error getting session cookies", e)
+            ""
+        }
+    }
+    
+    private fun showLoadingScreen() {
+        loadingScreen.visibility = View.VISIBLE
+        mainContent.visibility = View.GONE
+    }
+    
+    private fun hideLoadingScreen() {
+        loadingScreen.visibility = View.GONE
+        mainContent.visibility = View.VISIBLE
+    }
+    
+    private fun hideAllNativeUI() {
+        // Hide all native UI elements immediately
+        bottomNav.visibility = View.GONE
+        fabCamera.visibility = View.GONE
+        navigationView.visibility = View.GONE
+        
+        // Hide hamburger menu icon
+        val toolbar = toolbarForNavigation()
+        toolbar?.setNavigationIcon(null)
+        
+    }
+    
+    private fun updateUIForCurrentPage(location: String) {
+        // Hide loading screen first
+        hideLoadingScreen()
+        
+        val isLoginPage = location.contains("/login")
+        
+        if (isLoginPage) {
+            // Hide all elements for login page
+            hideAllNativeUI()
+        } else {
+            // Show all elements for other pages
+            bottomNav.visibility = View.VISIBLE
+            fabCamera.visibility = View.VISIBLE
+            navigationView.visibility = View.VISIBLE
+            
+            // Show hamburger menu icon
+            val toolbar = toolbarForNavigation()
+            toolbar?.setNavigationIcon(R.drawable.ic_menu_24)
+        }
+        
     }
 }

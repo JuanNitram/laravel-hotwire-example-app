@@ -3,4 +3,5 @@
     <string name="error_web_home">Error loading page</string>
     <string name="error_web_home_description">Something went wrong. Pull-to-refresh to try again in a minute.</string>
     <string name="menu_progress">Loading…</string>
+    <string name="camera_description">Take a photo</string>
 </resources>
