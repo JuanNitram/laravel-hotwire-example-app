@@ -3,58 +3,55 @@
   "rules": [
     {
       "patterns": [
-        "/dashboard$"
+        ".*"
       ],
       "properties": {
-        "uri": "hotwire://fragment/web/home",
-        "presentation": "push",
-        "pull_to_refresh_enabled": true,
-        "cache": true
-      }
-    },
-    {
-      "patterns": [
-        "/settings$"
-      ],
-      "properties": {
-        "uri": "hotwire://fragment/web/home",
-        "presentation": "push",
-        "pull_to_refresh_enabled": true,
-        "cache": true
-      }
-    },
-    {
-      "patterns": [
-        "/login$"
-      ],
-      "properties": {
+        "context": "default",
         "uri": "hotwire://fragment/web",
-        "presentation": "replace_root",
+        "fallback_uri": "hotwire://fragment/web",
         "pull_to_refresh_enabled": false
       }
     },
     {
       "patterns": [
-        "/create/?$",
-        "/edit/?$",
-        "/delete/?$"
+        "^/dashboard$",
+        "^/settings$"
+      ],
+      "properties": {
+        "uri": "hotwire://fragment/web/home",
+        "pull_to_refresh_enabled": false
+      }
+    },
+    {
+      "patterns": [
+        "^/settings/.+"
       ],
       "properties": {
         "context": "modal",
         "uri": "hotwire://fragment/web",
-        "presentation": "push",
+        "pull_to_refresh_enabled": false,
+        "presentation": "modal"
+      }
+    },
+    {
+      "patterns": [
+        "/login"
+      ],
+      "properties": {
+        "uri": "hotwire://fragment/web",
         "pull_to_refresh_enabled": false
       }
     },
     {
       "patterns": [
-        ".*"
+        "/create$",
+        "/edit$",
+        "/delete$"
       ],
       "properties": {
-        "uri": "hotwire://fragment/web/home",
-        "presentation": "push",
-        "pull_to_refresh_enabled": true,
-        "cache": true
+        "context": "modal",
+        "uri": "hotwire://fragment/web/modal/sheet",
+        "pull_to_refresh_enabled": false
       }
     }
   ]

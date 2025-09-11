@@ -47,6 +47,7 @@ class WebHomeFragment : WebFragment() {
     private var dynamicMenuItems: List<MenuItem> = emptyList()
     private var isClosingDrawer = false
     private var pendingNavigation: String? = null
+    private var pendingBottomNavigation: String? = null
     
     // Camera properties
     private var currentPhotoPath: String? = null
@@ -108,18 +109,39 @@ class WebHomeFragment : WebFragment() {
         bottomNav.setOnItemSelectedListener { tab ->
             when (tab.itemId) {
                 R.id.bottom_nav_dashboard -> {
-                    // Only navigate if not already on dashboard
-                    if (!navigator.location.orEmpty().contains("/dashboard")) {
-                        // Navigate to dashboard with custom transition
-                        navigateWithDirection(Urls.homeUrl, "dashboard")
+                    // Use same deferred navigation pattern as drawer
+                    val currentLocation = navigator.location.orEmpty()
+                    if (!currentLocation.contains("/dashboard")) {
+                        pendingBottomNavigation = Urls.homeUrl
+                        // Small delay to let tab selection animation start
+                        view?.postDelayed({
+                            pendingBottomNavigation?.let { url ->
+                                navigator.route(url) // Same as drawer - no VisitOptions
+                                pendingBottomNavigation = null
+                            }
+                        }, 50)
                     }
                     true
                 }
                 R.id.bottom_nav_settings -> {
-                    // Only navigate if not already on settings
-                    if (!navigator.location.orEmpty().contains("/settings")) {
-                        // Navigate to settings with custom transition
-                        navigateWithDirection(Urls.settingsUrl, "settings")
+                    // Use same deferred navigation pattern as drawer
+                    val currentLocation = navigator.location.orEmpty()
+                    android.util.Log.d("BottomNav", "Settings clicked. Current location: $currentLocation")
+                    if (!currentLocation.contains("/settings")) {
+                        // Try to use the same URL as drawer (from API) if available, fallback to static
+                        val settingsUrl = dynamicMenuItems.find { it.title == "Settings" }?.url ?: Urls.settingsUrl
+                        android.util.Log.d("BottomNav", "Navigating to settings: $settingsUrl")
+                        pendingBottomNavigation = settingsUrl
+                        // Small delay to let tab selection animation start
+                        view?.postDelayed({
+                            pendingBottomNavigation?.let { url ->
+                                android.util.Log.d("BottomNav", "Executing settings navigation: $url")
+                                navigator.route(url) // Same as drawer - no VisitOptions
+                                pendingBottomNavigation = null
+                            }
+                        }, 50)
+                    } else {
+                        android.util.Log.d("BottomNav", "Already on settings, skipping navigation")
                     }
                     true
                 }
@@ -199,6 +221,7 @@ class WebHomeFragment : WebFragment() {
             override fun onDrawerClosed(drawerView: View) {
                 // Execute pending navigation when drawer is fully closed
                 pendingNavigation?.let { url ->
+                    android.util.Log.d("Drawer", "Executing pending navigation: $url")
                     navigator.route(url)
                     pendingNavigation = null
                     isClosingDrawer = false
@@ -222,8 +245,12 @@ class WebHomeFragment : WebFragment() {
                 val urlPath = item.url.substringAfter(Urls.baseUrl)
                 val currentPath = navigator.location.orEmpty().substringAfter(Urls.baseUrl)
                 
+                android.util.Log.d("Drawer", "Item clicked: ${item.title}, URL: ${item.url}")
+                android.util.Log.d("Drawer", "Current path: $currentPath, URL path: $urlPath")
+                
                 // Navigate to the URL from the API
                 if (!currentPath.contains(urlPath)) {
+                    android.util.Log.d("Drawer", "Navigating to: ${item.url}")
                     // Set flag and store pending navigation
                     isClosingDrawer = true
                     pendingNavigation = item.url
@@ -231,6 +258,7 @@ class WebHomeFragment : WebFragment() {
                     // Close drawer - navigation will happen in onDrawerClosed callback
                     drawerLayout.closeDrawer(GravityCompat.START, true)
                 } else {
+                    android.util.Log.d("Drawer", "Already on same page, just closing drawer")
                     // Close drawer immediately if already on same page
                     drawerLayout.closeDrawer(GravityCompat.START, true)
                 }
@@ -298,10 +326,12 @@ class WebHomeFragment : WebFragment() {
     
     override fun onVisitStarted(location: String) {
         super.onVisitStarted(location)
+        android.util.Log.d("Navigation", "Visit started: $location")
     }
     
     override fun onVisitCompleted(location: String, completedOffline: Boolean) {
         super.onVisitCompleted(location, completedOffline)
+        android.util.Log.d("Navigation", "Visit completed: $location, offline: $completedOffline")
         
         // Only interfere with drawer if we're not in the middle of closing it
         if (!isClosingDrawer && drawerLayout.isDrawerOpen(GravityCompat.START)) {
