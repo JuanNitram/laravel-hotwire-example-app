@@ -123,6 +123,28 @@ class WebHomeFragment : WebFragment() {
                     }
                     true
                 }
+                R.id.bottom_nav_products -> {
+                    // Use same deferred navigation pattern as drawer
+                    val currentLocation = navigator.location.orEmpty()
+                    android.util.Log.d("BottomNav", "Products clicked. Current location: $currentLocation")
+                    if (!currentLocation.contains("/products")) {
+                        // Try to use the same URL as drawer (from API) if available, fallback to static
+                        val productsUrl = dynamicMenuItems.find { it.title == "Products" }?.url ?: Urls.productsUrl
+                        android.util.Log.d("BottomNav", "Navigating to products: $productsUrl")
+                        pendingBottomNavigation = productsUrl
+                        // Small delay to let tab selection animation start
+                        view?.postDelayed({
+                            pendingBottomNavigation?.let { url ->
+                                android.util.Log.d("BottomNav", "Executing products navigation: $url")
+                                navigator.route(url) // Same as drawer - no VisitOptions
+                                pendingBottomNavigation = null
+                            }
+                        }, 50)
+                    } else {
+                        android.util.Log.d("BottomNav", "Already on products, skipping navigation")
+                    }
+                    true
+                }
                 R.id.bottom_nav_settings -> {
                     // Use same deferred navigation pattern as drawer
                     val currentLocation = navigator.location.orEmpty()
@@ -349,6 +371,9 @@ class WebHomeFragment : WebFragment() {
         when {
             currentLocation.contains("/dashboard") -> {
                 bottomNav.menu.findItem(R.id.bottom_nav_dashboard).isChecked = true
+            }
+            currentLocation.contains("/products") -> {
+                bottomNav.menu.findItem(R.id.bottom_nav_products).isChecked = true
             }
             currentLocation.contains("/settings") -> {
                 bottomNav.menu.findItem(R.id.bottom_nav_settings).isChecked = true
